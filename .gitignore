@@ -1,0 +1,6 @@
+*.fw
+node_modules
+dist
+web/dist
+hardwareupdater.cfg
+hardwareupdater.py

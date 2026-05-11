@@ -1,0 +1,20 @@
+{
+  "name": "valve-firmware-updater",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "check:lib": "tsc --noEmit",
+    "check:web": "tsc --noEmit --project web/tsconfig.json",
+    "check": "npm run check:lib && npm run check:web",
+    "check:all": "npm run check"
+  },
+  "devDependencies": {
+    "@types/w3c-web-hid": "^1.0.7",
+    "@types/w3c-web-serial": "^1.0.8",
+    "typescript": "^5.4.0"
+  }
+}
