@@ -43,6 +43,23 @@
     height: 0.875rem
     animation: pulse-subtle 2s ease-in-out infinite
 
+  .countdown
+    margin-left: auto
+    font-variant-numeric: tabular-nums
+    color: rgba(245, 158, 11, 0.7)
+
+.timeoutBar
+  height: 2px
+  background: rgba(245, 158, 11, 0.15)
+  border-radius: 9999px
+  overflow: hidden
+  margin: -0.5rem 0 1rem 0
+
+  .fill
+    height: 100%
+    background: rgba(245, 158, 11, 0.6)
+    transition: width 0.5s linear
+
 .infoList
   & > div
     padding: 0.625rem 0
@@ -65,6 +82,33 @@
   color: #f59e0b
   border: 1px solid rgba(245, 158, 11, 0.25)
 
-  &:hover
+  &:hover:not(:disabled)
     background: rgba(245, 158, 11, 0.22)
     border-color: rgba(245, 158, 11, 0.4)
+
+  &:disabled
+    opacity: 0.5
+    cursor: not-allowed
+
+.exitButton
+  display: inline-flex
+  align-items: center
+  gap: 0.5rem
+  padding: 0.375rem 0.75rem
+  border-radius: 0.5rem
+  font-size: 0.75rem
+  font-weight: 500
+  cursor: pointer
+  transition: all 0.15s ease
+  background: rgba(156, 163, 175, 0.08)
+  color: #9ca3af
+  border: 1px solid rgba(156, 163, 175, 0.25)
+
+  &:hover:not(:disabled)
+    background: rgba(156, 163, 175, 0.18)
+    color: #e5e7eb
+    border-color: rgba(156, 163, 175, 0.4)
+
+  &:disabled
+    opacity: 0.5
+    cursor: not-allowed

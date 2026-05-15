@@ -9,6 +9,9 @@ import {
   watchControllerSlots,
   getDeviceInfo,
   readAllAttributes,
+  openSerialPort,
+  closeSerialPort,
+  resetDevice,
   DeviceClass,
 } from "@lib/index.js";
 import type { ValveHidDevice, DeviceInfo, DeviceAttributes, ConnectedController, BootloaderDevice, BootloaderPort } from "@lib/index.js";
@@ -234,6 +237,25 @@ export function App() {
     setWatchGeneration((g) => g + 1);
   }, [refreshDevices]);
 
+  /** User clicked "Exit Bootloader" on a BootloaderCard — open the
+   *  serial port, send RESET, close. The device reboots into normal
+   *  firmware mode; refresh gating prevents stale state while it
+   *  re-enumerates as HID. */
+  const handleExitBootloader = useCallback(async (dev: BootloaderDevice) => {
+    rebootingRef.current = true;
+    try {
+      const transport = await openSerialPort(dev.port);
+      try {
+        await resetDevice(transport);
+      } finally {
+        await closeSerialPort(transport);
+      }
+    } finally {
+      rebootingRef.current = false;
+    }
+    await refreshDevicesAndRewatch();
+  }, [refreshDevicesAndRewatch]);
+
   /** User clicked "Connect to Bootloader" on a pending Puck card —
    *  cancel its timer and open the port now. The pending entry stays
    *  visible (in busy state) until the bootloader card is ready, so the
@@ -457,6 +479,7 @@ export function App() {
             firmwareCatalog={firmwareCatalog}
             onFlashComplete={refreshDevicesAndRewatch}
             onFlashingChange={(v) => { flashingRef.current = v; }}
+            onExitBootloader={handleExitBootloader}
           />
         </PickerProvider>
       </main>

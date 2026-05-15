@@ -50,6 +50,7 @@ export {
 
 // Update operations
 export { flashFirmware, updateDeviceFromNormalMode } from "./updater.js";
+export { resetDevice } from "./serial/serial-protocol.js";
 
 // Low-level HID protocol (for advanced use)
 export {

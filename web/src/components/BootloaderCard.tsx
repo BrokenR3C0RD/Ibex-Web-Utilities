@@ -1,11 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { DeviceType } from "@lib/index.js";
 import { TRITON_FW_MAGIC, PROTEUS_FW_MAGIC } from "@lib/constants.js";
 import type { BootloaderDevice } from "@lib/index.js";
 import type { FirmwareCatalog } from "../firmware-catalog";
 import { lookupFirmwareByCrc } from "../firmware-catalog";
 import { TimestampValue } from "./TimestampValue";
-import { BootloaderIcon, HashIcon, FirmwareIcon, SerialIcon, FlashIcon } from "./Icons";
+import { BootloaderIcon, HashIcon, FirmwareIcon, SerialIcon, FlashIcon, RebootIcon, SpinnerIcon } from "./Icons";
 import { FlashWizard } from "./FlashWizard";
 import styles from "./BootloaderCard.module.sass";
 
@@ -19,19 +19,48 @@ function bootloaderTitle(t: DeviceType): string {
   return t === DeviceType.TritonBootloader ? "Steam Controller" : "Steam Controller Puck";
 }
 
+/** Time the bootloader waits for activity before auto-exiting to firmware. */
+const BOOTLOADER_IDLE_TIMEOUT_MS = 120_000;
+
 interface BootloaderCardProps {
   device: BootloaderDevice;
   firmwareCatalog: FirmwareCatalog | null;
   onFlashComplete: () => void;
   onFlashingChange: (flashing: boolean) => void;
+  onExitBootloader: (device: BootloaderDevice) => Promise<void>;
 }
 
-export function BootloaderCard({ device, firmwareCatalog, onFlashComplete, onFlashingChange }: BootloaderCardProps) {
+export function BootloaderCard({ device, firmwareCatalog, onFlashComplete, onFlashingChange, onExitBootloader }: BootloaderCardProps) {
   const [wizardOpen, setWizardOpen] = useState(false);
-  const { info, deviceType } = device;
+  const [exiting, setExiting] = useState(false);
+  const [exitError, setExitError] = useState<string | null>(null);
+  const [now, setNow] = useState(() => Date.now());
+  const { info, deviceType, lastInfoAt } = device;
   const catalogEntry = firmwareCatalog
     ? lookupFirmwareByCrc(firmwareCatalog, info.installedFwChecksum)
     : null;
+
+  useEffect(() => {
+    const tick = () => setNow(Date.now());
+    const id = setInterval(tick, 500);
+    return () => clearInterval(id);
+  }, []);
+
+  const remainingMs = Math.max(0, BOOTLOADER_IDLE_TIMEOUT_MS - (now - lastInfoAt));
+  const remainingSec = Math.ceil(remainingMs / 1000);
+  const progress = remainingMs / BOOTLOADER_IDLE_TIMEOUT_MS;
+
+  const handleExit = async () => {
+    setExitError(null);
+    setExiting(true);
+    try {
+      await onExitBootloader(device);
+      // Card unmounts when the device re-enumerates as normal HID.
+    } catch (e) {
+      setExitError(e instanceof Error ? e.message : String(e));
+      setExiting(false);
+    }
+  };
 
   return (
     <div className={styles.card}>
@@ -55,6 +84,10 @@ export function BootloaderCard({ device, firmwareCatalog, onFlashComplete, onFla
         <div className={styles.status}>
           <BootloaderIcon className={styles.icon} />
           Ready for firmware update
+          <span className={styles.countdown}>auto-exit in {remainingSec}s</span>
+        </div>
+        <div className={styles.timeoutBar} aria-hidden="true">
+          <div className={styles.fill} style={{ width: `${progress * 100}%` }} />
         </div>
 
         <dl className={`${styles.infoList} text-sm`}>
@@ -124,13 +157,36 @@ export function BootloaderCard({ device, firmwareCatalog, onFlashComplete, onFla
         </div>
 
         <div className="mt-4 border-t border-border-subtle pt-3">
-          <button
-            className={styles.flashButton}
-            onClick={() => setWizardOpen(true)}
-          >
-            <FlashIcon className="w-3.5 h-3.5" />
-            Flash Firmware
-          </button>
+          {exitError && (
+            <p className="text-xs text-red-400 mb-2">{exitError}</p>
+          )}
+          <div className="flex items-center gap-2">
+            <button
+              className={styles.flashButton}
+              onClick={() => setWizardOpen(true)}
+              disabled={exiting}
+            >
+              <FlashIcon className="w-3.5 h-3.5" />
+              Flash Firmware
+            </button>
+            <button
+              className={styles.exitButton}
+              onClick={handleExit}
+              disabled={exiting}
+            >
+              {exiting ? (
+                <>
+                  <SpinnerIcon className="w-3.5 h-3.5" />
+                  Exiting…
+                </>
+              ) : (
+                <>
+                  <RebootIcon className="w-3.5 h-3.5" />
+                  Exit Bootloader
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
 
