@@ -147,6 +147,99 @@
   color: #4ade80
   margin: 0 auto 0.75rem
 
+.searchInput
+  display: block
+  width: 100%
+  padding: 0.5rem 0.75rem
+  border: 1px solid rgba(42, 48, 64, 0.7)
+  border-radius: 0.5rem
+  background: rgba(0, 0, 0, 0.25)
+  color: #e5e7eb
+  font-family: ui-monospace, monospace
+  font-size: 0.8125rem
+  outline: none
+  transition: border-color 0.15s ease
+
+  &:focus
+    border-color: rgba(245, 158, 11, 0.5)
+
+  &:disabled
+    opacity: 0.5
+    cursor: not-allowed
+
+  &::placeholder
+    color: #6b7280
+    font-family: ui-sans-serif, system-ui, sans-serif
+
+.catalogList
+  list-style: none
+  padding: 0
+  margin: 0.75rem 0 0 0
+  max-height: 24rem
+  overflow-y: auto
+  border: 1px solid rgba(42, 48, 64, 0.5)
+  border-radius: 0.5rem
+  background: rgba(0, 0, 0, 0.15)
+
+  li
+    border-bottom: 1px solid rgba(42, 48, 64, 0.4)
+
+    &:last-child
+      border-bottom: none
+
+.catalogRow
+  display: flex
+  align-items: center
+  gap: 0.75rem
+  width: 100%
+  padding: 0.5rem 0.75rem
+  background: transparent
+  border: none
+  text-align: left
+  cursor: pointer
+  transition: background-color 0.15s ease
+  color: #e5e7eb
+
+  &:hover:not(:disabled)
+    background: rgba(245, 158, 11, 0.06)
+
+  &:disabled
+    opacity: 0.5
+    cursor: not-allowed
+
+.catalogVersion
+  font-family: ui-monospace, monospace
+  font-size: 0.8125rem
+  color: #e5e7eb
+  flex-shrink: 0
+
+.catalogDate
+  flex: 1
+  font-size: 0.75rem
+  color: #9ca3af
+
+.channelChipStable
+  display: inline-flex
+  align-items: center
+  padding: 0.125rem 0.5rem
+  border-radius: 9999px
+  font-size: 0.6875rem
+  font-weight: 500
+  background: rgba(34, 197, 94, 0.12)
+  color: #4ade80
+  border: 1px solid rgba(34, 197, 94, 0.3)
+
+.channelChipBeta
+  display: inline-flex
+  align-items: center
+  padding: 0.125rem 0.5rem
+  border-radius: 9999px
+  font-size: 0.6875rem
+  font-weight: 500
+  background: rgba(59, 130, 246, 0.12)
+  color: #60a5fa
+  border: 1px solid rgba(59, 130, 246, 0.3)
+
 .errorBox
   background: rgba(239, 68, 68, 0.08)
   border: 1px solid rgba(239, 68, 68, 0.25)

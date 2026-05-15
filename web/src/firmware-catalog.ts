@@ -74,6 +74,26 @@ export function getLatestFirmware(
   return out;
 }
 
+export function listFirmwareForCategory(
+  catalog: FirmwareCatalog,
+  category: FirmwareCategory,
+): LatestFirmwareRelease[] {
+  const out: LatestFirmwareRelease[] = [];
+  for (const [filename, entry] of Object.entries(catalog[category])) {
+    const channels = entry.first_seen;
+    if (!channels || Object.keys(channels).length === 0) continue;
+    out.push({ filename, entry });
+  }
+  out.sort((a, b) => b.entry.version_unix - a.entry.version_unix);
+  return out;
+}
+
+export function primaryChannel(entry: FirmwareEntry): FirmwareChannel | null {
+  if (entry.first_seen?.stable) return "stable";
+  if (entry.first_seen?.publicbeta) return "publicbeta";
+  return null;
+}
+
 export async function downloadFirmware(
   category: FirmwareCategory,
   filename: string,

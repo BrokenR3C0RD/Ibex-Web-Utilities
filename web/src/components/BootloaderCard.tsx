@@ -7,7 +7,8 @@ import { lookupFirmwareByCrc } from "../firmware-catalog";
 import { TimestampValue } from "./TimestampValue";
 import { FirmwareUpdateBadge } from "./FirmwareUpdateBadge";
 import { BootloaderIcon, HashIcon, FirmwareIcon, SerialIcon, FlashIcon, RebootIcon, SpinnerIcon } from "./Icons";
-import { FlashWizard } from "./FlashWizard";
+import { FlashWizard, type FlashWizardMode } from "./FlashWizard";
+import { useShiftKey } from "../use-shift-key";
 import styles from "./BootloaderCard.module.sass";
 
 function fwMagicName(magic: number): string {
@@ -33,6 +34,8 @@ interface BootloaderCardProps {
 
 export function BootloaderCard({ device, firmwareCatalog, onFlashComplete, onFlashingChange, onExitBootloader }: BootloaderCardProps) {
   const [wizardOpen, setWizardOpen] = useState(false);
+  const [wizardMode, setWizardMode] = useState<FlashWizardMode>("catalog");
+  const shiftHeld = useShiftKey();
   const [exiting, setExiting] = useState(false);
   const [exitError, setExitError] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
@@ -176,12 +179,16 @@ export function BootloaderCard({ device, firmwareCatalog, onFlashComplete, onFla
           )}
           <div className="flex items-center gap-2">
             <button
-              className={styles.flashButton}
-              onClick={() => setWizardOpen(true)}
+              className={shiftHeld ? styles.flashButtonDanger : styles.flashButton}
+              onClick={(e) => {
+                const useFile = e.shiftKey || !firmwareCatalog;
+                setWizardMode(useFile ? "file" : "catalog");
+                setWizardOpen(true);
+              }}
               disabled={exiting}
             >
               <FlashIcon className="w-3.5 h-3.5" />
-              Flash Firmware
+              {shiftHeld ? "Flash Firmware from File" : "Flash Firmware"}
             </button>
             <button
               className={styles.exitButton}
@@ -207,6 +214,7 @@ export function BootloaderCard({ device, firmwareCatalog, onFlashComplete, onFla
       <FlashWizard
         device={device}
         firmwareCatalog={firmwareCatalog}
+        mode={wizardMode}
         isOpen={wizardOpen}
         onClose={() => setWizardOpen(false)}
         onFlashComplete={onFlashComplete}

@@ -10,8 +10,13 @@ import {
 } from "@lib/index.js";
 import { TRITON_FW_MAGIC, PROTEUS_FW_MAGIC } from "@lib/constants.js";
 import type { BootloaderDevice, FirmwareFile, UpdateEvent } from "@lib/index.js";
-import type { FirmwareCatalog } from "../firmware-catalog";
-import { lookupFirmwareByCrc } from "../firmware-catalog";
+import type { FirmwareCatalog, FirmwareChannel, LatestFirmwareRelease } from "../firmware-catalog";
+import {
+  downloadFirmware,
+  listFirmwareForCategory,
+  lookupFirmwareByCrc,
+  primaryChannel,
+} from "../firmware-catalog";
 import { Modal } from "./Modal";
 import {
   WarningIcon,
@@ -22,7 +27,16 @@ import {
 } from "./Icons";
 import styles from "./FlashWizard.module.sass";
 
-type WizardStep = "disclaimer" | "file_select" | "confirm" | "flashing" | "complete" | "error";
+type WizardStep =
+  | "disclaimer"
+  | "catalog_select"
+  | "file_select"
+  | "confirm"
+  | "flashing"
+  | "complete"
+  | "error";
+
+export type FlashWizardMode = "catalog" | "file";
 
 function fwMagicName(magic: number): string {
   if (magic === TRITON_FW_MAGIC) return "IBEX (Controller)";
@@ -33,18 +47,21 @@ function fwMagicName(magic: number): string {
 interface FlashWizardProps {
   device: BootloaderDevice;
   firmwareCatalog: FirmwareCatalog | null;
+  mode: FlashWizardMode;
   isOpen: boolean;
   onClose: () => void;
   onFlashComplete: () => void;
   onFlashingChange: (flashing: boolean) => void;
 }
 
-export function FlashWizard({ device, firmwareCatalog, isOpen, onClose, onFlashComplete, onFlashingChange }: FlashWizardProps) {
+export function FlashWizard({ device, firmwareCatalog, mode, isOpen, onClose, onFlashComplete, onFlashingChange }: FlashWizardProps) {
   const [step, setStep] = useState<WizardStep>("disclaimer");
   const [firmware, setFirmware] = useState<FirmwareFile | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
   const [flashStatus, setFlashStatus] = useState<UpdateEvent | null>(null);
   const [flashError, setFlashError] = useState<string | null>(null);
+  const [catalogSearch, setCatalogSearch] = useState("");
+  const [downloadingFilename, setDownloadingFilename] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const flashAttempted = useRef(false);
 
@@ -54,6 +71,8 @@ export function FlashWizard({ device, firmwareCatalog, isOpen, onClose, onFlashC
     setFileError(null);
     setFlashStatus(null);
     setFlashError(null);
+    setCatalogSearch("");
+    setDownloadingFilename(null);
     flashAttempted.current = false;
   }, []);
 
@@ -81,6 +100,23 @@ export function FlashWizard({ device, firmwareCatalog, isOpen, onClose, onFlashC
       setFileError(err instanceof Error ? err.message : String(err));
       // Reset input so the same file can be re-selected after fixing
       if (fileInputRef.current) fileInputRef.current.value = "";
+    }
+  }, [device.deviceClass]);
+
+  const handleCatalogSelect = useCallback(async (release: LatestFirmwareRelease) => {
+    setFileError(null);
+    setDownloadingFilename(release.filename);
+    try {
+      const category = device.deviceClass === DeviceClass.Proteus ? "puck" : "controller";
+      const bytes = await downloadFirmware(category, release.filename);
+      const fw = parseFirmware(bytes);
+      validateFirmwareForDevice(fw, device.deviceClass);
+      setFirmware(fw);
+      setStep("confirm");
+    } catch (err) {
+      setFileError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setDownloadingFilename(null);
     }
   }, [device.deviceClass]);
 
@@ -125,6 +161,7 @@ export function FlashWizard({ device, firmwareCatalog, isOpen, onClose, onFlashC
 
   const stepTitle: Record<WizardStep, string> = {
     disclaimer: "Flash Firmware",
+    catalog_select: "Select Firmware",
     file_select: "Select Firmware File",
     confirm: "Confirm Flash",
     flashing: "Flashing Firmware",
@@ -141,6 +178,11 @@ export function FlashWizard({ device, firmwareCatalog, isOpen, onClose, onFlashC
     >
       {step === "disclaimer" && (
         <>
+          {mode === "catalog" && (
+            <p className="text-sm text-gray-400 mb-3">
+              Firmware will be downloaded from the OpenSteamController index.
+            </p>
+          )}
           <div className={styles.warningBox}>
             <div className="flex items-start gap-2">
               <WarningIcon className="w-5 h-5 text-amber-400 shrink-0 mt-0.5" />
@@ -148,7 +190,9 @@ export function FlashWizard({ device, firmwareCatalog, isOpen, onClose, onFlashC
                 <p className="font-medium text-amber-400 mb-2">Warning: Proceed at your own risk</p>
                 <ul className="space-y-1 text-xs text-gray-400 list-disc list-inside">
                   <li>This tool is unofficial and not affiliated with Valve.</li>
-                  <li>Unofficial firmware not provided by Valve may cause permanent, irreversible damage to your controller.</li>
+                  {mode === "file" && (
+                    <li>Unofficial firmware not provided by Valve may cause permanent, irreversible damage to your controller.</li>
+                  )}
                   <li>You accept full responsibility for any damage to your device.</li>
                   <li>The authors accept no liability for bricked, damaged, or destroyed devices, regardless of the firmware used.</li>
                 </ul>
@@ -177,12 +221,82 @@ export function FlashWizard({ device, firmwareCatalog, isOpen, onClose, onFlashC
 
           <div className={styles.buttonRow}>
             <button className={styles.cancelButton} onClick={handleClose}>Cancel</button>
-            <button className={styles.primaryButton} onClick={() => setStep("file_select")}>
+            <button
+              className={styles.primaryButton}
+              onClick={() => setStep(mode === "catalog" ? "catalog_select" : "file_select")}
+            >
               I Understand, Continue
             </button>
           </div>
         </>
       )}
+
+      {step === "catalog_select" && (() => {
+        const category = device.deviceClass === DeviceClass.Proteus ? "puck" : "controller";
+        const all = firmwareCatalog ? listFirmwareForCategory(firmwareCatalog, category) : [];
+        const q = catalogSearch.trim().toLowerCase();
+        const visible = q
+          ? all.filter((r) => r.entry.version_hex.toLowerCase().includes(q))
+          : all;
+        return (
+          <>
+            <input
+              type="text"
+              value={catalogSearch}
+              onChange={(e) => setCatalogSearch(e.target.value)}
+              placeholder="Search by version (e.g. 6A05E8CE)"
+              className={styles.searchInput}
+              autoFocus
+              disabled={!!downloadingFilename}
+            />
+
+            {!firmwareCatalog ? (
+              <p className="text-sm text-gray-500 italic mt-3">Catalog hasn't loaded yet.</p>
+            ) : visible.length === 0 ? (
+              <p className="text-sm text-gray-500 italic mt-3">
+                {q ? "No matches." : "No firmwares in catalog for this device."}
+              </p>
+            ) : (
+              <ul className={styles.catalogList}>
+                {visible.map((r) => {
+                  const ch = primaryChannel(r.entry);
+                  const dateIso = ch ? r.entry.first_seen?.[ch]?.date : undefined;
+                  const date = dateIso ? new Date(dateIso).toLocaleDateString() : "—";
+                  const isDownloading = downloadingFilename === r.filename;
+                  return (
+                    <li key={r.filename}>
+                      <button
+                        type="button"
+                        className={styles.catalogRow}
+                        onClick={() => void handleCatalogSelect(r)}
+                        disabled={!!downloadingFilename}
+                      >
+                        <span className={styles.catalogVersion}>{r.entry.version_hex.toUpperCase()}</span>
+                        <span className={styles.catalogDate}>{date}</span>
+                        {ch === "stable" && <span className={styles.channelChipStable}>Stable</span>}
+                        {ch === "publicbeta" && <span className={styles.channelChipBeta}>Beta</span>}
+                        {isDownloading && <SpinnerIcon className="w-3.5 h-3.5 text-amber-400" />}
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+
+            {fileError && <p className={styles.errorText}>{fileError}</p>}
+
+            <div className={styles.buttonRow}>
+              <button
+                className={styles.cancelButton}
+                onClick={handleClose}
+                disabled={!!downloadingFilename}
+              >
+                Cancel
+              </button>
+            </div>
+          </>
+        );
+      })()}
 
       {step === "file_select" && (
         <>
