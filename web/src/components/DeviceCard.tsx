@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { DeviceTypeNames, DeviceClass, rebootToBootloader, getDeviceClass } from "@lib/index.js";
+import { DeviceType, DeviceClass, rebootToBootloader, getDeviceClass } from "@lib/index.js";
 import type { ConnectedController, DeviceAttributes } from "@lib/index.js";
 import type { ConnectedDevice } from "../App";
 import { ExtraAttributes } from "./DeviceAttributes";
@@ -15,6 +15,17 @@ import {
   WirelessIcon,
 } from "./Icons";
 import styles from "./DeviceCard.module.sass";
+
+function connectionChip(type: DeviceType): { label: string; variant: "usb" | "ble" | "esb" } {
+  switch (type) {
+    case DeviceType.TritonBLE:
+      return { label: "BLE", variant: "ble" };
+    case DeviceType.TritonESB:
+      return { label: "ESB", variant: "esb" };
+    default:
+      return { label: "USB", variant: "usb" };
+  }
+}
 
 function ControllerChild({ controller }: { controller: ConnectedController }) {
   return (
@@ -85,6 +96,8 @@ export function DeviceCard({ device }: DeviceCardProps) {
 
   const isPuck = info.deviceClass === DeviceClass.Proteus;
   const variant = isPuck ? "puck" : "controller";
+  const chip = connectionChip(info.type);
+  const titleName = isPuck ? "Steam Controller Puck" : "Steam Controller";
 
   const handleRebootToBootloader = async () => {
     setRebootError(null);
@@ -113,12 +126,12 @@ export function DeviceCard({ device }: DeviceCardProps) {
           </div>
           <div className="flex-1 min-w-0">
             <h2 className="text-base font-semibold text-gray-100 truncate">
-              {DeviceTypeNames[info.type]}
+              {titleName}
             </h2>
             <p className="text-xs text-gray-500 font-mono">{info.serialNumber}</p>
           </div>
-          <span className={`${styles.badge} ${styles[variant]}`}>
-            {isPuck ? "Puck" : "Controller"}
+          <span className={`${styles.badge} ${styles[chip.variant]}`}>
+            {chip.label}
           </span>
         </div>
 
