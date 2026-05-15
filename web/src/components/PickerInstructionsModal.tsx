@@ -36,14 +36,14 @@ export function PickerInstructionsModal({
         <button
           onClick={onCancel}
           disabled={busy}
-          className="px-3 py-1.5 text-sm rounded text-gray-300 hover:bg-surface-raised disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          className="px-3 py-1.5 text-sm rounded text-gray-300 hover:bg-surface-raised cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           Cancel
         </button>
         <button
           onClick={onContinue}
           disabled={busy}
-          className="px-4 py-1.5 text-sm font-medium rounded bg-valve-blue text-white hover:bg-valve-blue/90 disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2 transition-colors"
+          className="px-4 py-1.5 text-sm font-medium rounded bg-valve-blue text-white hover:bg-valve-blue/90 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2 transition-colors"
         >
           {busy ? (
             <>
