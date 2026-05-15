@@ -21,7 +21,6 @@ import {
   WirelessIcon,
 } from "./Icons";
 import { usePicker } from "../picker-context";
-import { BOOTLOADER_PORT_FILTERS } from "../serial-filter";
 import styles from "./DeviceCard.module.sass";
 
 function connectionChip(type: DeviceType): { label: string; variant: "usb" | "ble" | "esb" } {
@@ -44,9 +43,9 @@ function ControllerChild({ controller }: { controller: ConnectedController }) {
     setRebootError(null);
     setRebooting(true);
     try {
-      await runBootloaderPicker(async () => {
-        await rebootControllerSlot(controller.device);
-        await navigator.serial.requestPort({ filters: BOOTLOADER_PORT_FILTERS });
+      await runBootloaderPicker({
+        deviceClass: DeviceClass.Triton,
+        action: () => rebootControllerSlot(controller.device),
       });
     } catch (e) {
       setRebootError(e instanceof Error ? e.message : String(e));
@@ -156,9 +155,9 @@ export function DeviceCard({ device }: DeviceCardProps) {
     setRebooting(true);
     try {
       const deviceClass = getDeviceClass(info.type);
-      const confirmed = await runBootloaderPicker(async () => {
-        await rebootToBootloader(deviceClass, device.hid);
-        await navigator.serial.requestPort({ filters: BOOTLOADER_PORT_FILTERS });
+      const confirmed = await runBootloaderPicker({
+        deviceClass,
+        action: () => rebootToBootloader(deviceClass, device.hid),
       });
       if (!confirmed) {
         // User cancelled the modal — nothing rebooted, drop the busy state.

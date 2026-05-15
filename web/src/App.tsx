@@ -4,6 +4,7 @@ import {
   getGrantedHidDevices,
   getConnectedControllers,
   listGrantedBootloaderPorts,
+  findGrantedBootloaderPort,
   readBootloaderInfo,
   watchControllerSlots,
   getDeviceInfo,
@@ -18,7 +19,7 @@ import { DebugPanel } from "./components/DebugPanel";
 import { PickerInstructionsModal } from "./components/PickerInstructionsModal";
 import { GitHubIcon } from "./components/Icons";
 import { usePickerFlow } from "./hooks/usePickerFlow";
-import { PickerProvider } from "./picker-context";
+import { PickerProvider, type BootloaderPickerOptions } from "./picker-context";
 import { BOOTLOADER_PORT_FILTERS } from "./serial-filter";
 import { fetchFirmwareCatalog } from "./firmware-catalog";
 import type { FirmwareCatalog } from "./firmware-catalog";
@@ -207,8 +208,38 @@ export function App() {
   const hidPicker = usePickerFlow();
   const bootloaderPicker = usePickerFlow();
 
+  /** Trigger a bootloader connect flow. Always shows the instructional
+   *  modal; on Continue we run the device action, then check whether the
+   *  bootloader port for this device class is already paired. If it is,
+   *  we skip the browser serial picker — the port will be picked up by
+   *  the post-action refresh automatically. Otherwise we call
+   *  navigator.serial.requestPort so the user can grant it.
+   *
+   *  The paired check has to happen AFTER the action, because Web Serial
+   *  getPorts() only returns currently-connected ports — and the
+   *  bootloader port doesn't exist until the device has rebooted into
+   *  bootloader mode. We poll briefly to give the device time to
+   *  re-enumerate. */
   const runBootloaderPicker = useCallback(
-    (fn: () => Promise<unknown>) => bootloaderPicker.run(fn),
+    async ({ deviceClass, action }: BootloaderPickerOptions) => {
+      const wrappedFn = async () => {
+        if (action) await action();
+
+        if (deviceClass !== undefined) {
+          const POLL_DEADLINE = Date.now() + 2000;
+          while (Date.now() < POLL_DEADLINE) {
+            if (await findGrantedBootloaderPort(deviceClass)) {
+              // Already paired — skip the browser picker.
+              return;
+            }
+            await new Promise((r) => setTimeout(r, 100));
+          }
+        }
+
+        await navigator.serial.requestPort({ filters: BOOTLOADER_PORT_FILTERS });
+      };
+      return bootloaderPicker.run(wrappedFn);
+    },
     [bootloaderPicker],
   );
 
@@ -231,9 +262,7 @@ export function App() {
     try {
       // No deviceClass — could be either Triton or Puck bootloader, so
       // always show the picker.
-      await runBootloaderPicker(() =>
-        navigator.serial.requestPort({ filters: BOOTLOADER_PORT_FILTERS }),
-      );
+      await runBootloaderPicker({});
       await refreshDevicesAndRewatch();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));

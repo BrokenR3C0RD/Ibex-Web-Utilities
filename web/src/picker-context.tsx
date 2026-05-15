@@ -1,12 +1,29 @@
 import { createContext, useContext, type ReactNode } from "react";
+import type { DeviceClass } from "@lib/index.js";
+
+export interface BootloaderPickerOptions {
+  /** Device class whose bootloader port we expect to talk to. Used to
+   *  detect if the port is already paired — if so, the instructional
+   *  modal and the serial picker are both skipped. Omit when the caller
+   *  has no specific device in mind (e.g., the Connect Bootloader header
+   *  button), in which case the modal+picker are always shown. */
+  deviceClass?: DeviceClass;
+  /** The device-side action to perform (e.g., send a reboot HID command).
+   *  Runs after the user clicks Continue on the modal, or immediately on
+   *  the fast path. Omit when the only thing to do is bring up the
+   *  picker (e.g., Connect Bootloader). */
+  action?: () => Promise<unknown>;
+}
 
 interface PickerContextValue {
-  /** Runs the given async picker fn under the bootloader-instructions overlay.
-   *  Lifted to App scope so the overlay survives the DeviceCard unmount
-   *  that happens when the HID device re-enumerates as the bootloader.
-   *  Resolves to `true` if the user confirmed (clicked Continue), `false`
-   *  if they clicked Cancel. */
-  runBootloaderPicker: (fn: () => Promise<unknown>) => Promise<boolean>;
+  /** Trigger a bootloader connect flow. If the deviceClass's port is
+   *  already paired we skip the modal+picker entirely; otherwise we open
+   *  the instructional modal and call navigator.serial.requestPort on
+   *  Continue. Either way the action runs, hot-plug refreshes are paused
+   *  while it runs, and a single refresh fires afterward. Resolves to
+   *  `true` if the flow ran (paired fast path or modal Continue), `false`
+   *  if the user cancelled the modal. */
+  runBootloaderPicker: (opts: BootloaderPickerOptions) => Promise<boolean>;
 }
 
 const PickerContext = createContext<PickerContextValue | null>(null);
