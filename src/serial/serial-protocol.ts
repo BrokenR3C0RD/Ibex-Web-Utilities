@@ -26,15 +26,23 @@ export async function sendAndExpectAck(
   transport: ValveSerialPort,
   payload: Uint8Array,
 ): Promise<Uint8Array> {
+  const msgId = payload.length >= 2
+    ? `0x${(payload[0] | (payload[1] << 8)).toString(16)}`
+    : "unknown";
+  debug(`sendAndExpectAck: msgId=${msgId} payload=${payload.length} bytes`);
+
   const encoded = encodeMessage(payload);
   await writeBytes(transport, encoded);
 
   const raw = await readUntilEof(transport);
   const decoded = decodeMessage(raw);
 
+  const hexResp = Array.from(decoded.subarray(0, 16), b => b.toString(16).padStart(2, '0')).join(' ');
+  debug(`sendAndExpectAck: response=${hexResp} (${decoded.length} bytes)`);
+
   if (decoded.length < 1 || decoded[0] !== 0) {
     throw new ProtocolError(
-      `Expected ACK (0x00), got: ${decoded.length ? `0x${decoded[0].toString(16)}` : "empty"}`,
+      `Expected ACK (0x00), got: ${decoded.length ? `0x${decoded[0].toString(16)}` : "empty"} (msgId=${msgId})`,
     );
   }
 
@@ -135,14 +143,25 @@ export async function sendFirmwareChunk(
   transport: ValveSerialPort,
   chunk: Uint8Array,
 ): Promise<void> {
+  // Pad to 4-byte alignment — ARM flash controllers require word-aligned writes.
+  // Padding with 0xFF matches erased flash state and doesn't affect firmware CRC
+  // (which only covers the declared payload size in the header).
+  const paddedLen = (chunk.length + 3) & ~3;
+  let data = chunk;
+  if (paddedLen !== chunk.length) {
+    data = new Uint8Array(paddedLen);
+    data.fill(0xff);
+    data.set(chunk);
+  }
+
   const header = new Uint8Array(4);
   const headerView = new DataView(header.buffer);
   headerView.setUint16(0, MESSAGE_FW_DATA, true);
-  headerView.setUint16(2, chunk.length, true);
+  headerView.setUint16(2, data.length, true);
 
-  const msg = new Uint8Array(4 + chunk.length);
+  const msg = new Uint8Array(4 + data.length);
   msg.set(header);
-  msg.set(chunk, 4);
+  msg.set(data, 4);
 
   await sendAndExpectAck(transport, msg);
 }

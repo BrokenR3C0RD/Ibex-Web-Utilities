@@ -2,6 +2,12 @@ import { VALVE_VID, BOOTLOADER_PIDS, EOF } from "../constants.js";
 import { DeviceClass } from "../types.js";
 import type { ValveSerialPort } from "../types.js";
 import { UserCancelledError, DeviceCommunicationError } from "../errors.js";
+import { debug } from "../debug.js";
+
+function hexdump(data: Uint8Array, maxBytes = 64): string {
+  const hex = Array.from(data.subarray(0, maxBytes), b => b.toString(16).padStart(2, '0')).join(' ');
+  return data.length > maxBytes ? `${hex}... (${data.length} bytes total)` : hex;
+}
 
 /**
  * Request user to select a serial port for a bootloader device.
@@ -92,6 +98,9 @@ export async function readUntilEof(
       if (eofIdx !== -1) {
         chunks.push(value.subarray(0, eofIdx + 1));
         totalLength += eofIdx + 1;
+        if (eofIdx + 1 < value.length) {
+          debug(`readUntilEof: ${value.length - eofIdx - 1} bytes after EOF discarded: ${hexdump(value.subarray(eofIdx + 1))}`);
+        }
         break;
       }
 
@@ -109,6 +118,7 @@ export async function readUntilEof(
     result.set(chunk, offset);
     offset += chunk.length;
   }
+  debug(`serial:read ${hexdump(result)}`);
   return result;
 }
 
@@ -119,5 +129,6 @@ export async function writeBytes(
   transport: ValveSerialPort,
   data: Uint8Array,
 ): Promise<void> {
+  debug(`serial:write ${hexdump(data)}`);
   await transport.writer.write(data);
 }
