@@ -16,6 +16,8 @@ import { ConnectButton } from "./components/ConnectButton";
 import { DeviceList } from "./components/DeviceList";
 import { ErrorBanner } from "./components/ErrorBanner";
 import { DebugPanel } from "./components/DebugPanel";
+import { fetchFirmwareCatalog } from "./firmware-catalog";
+import type { FirmwareCatalog } from "./firmware-catalog";
 
 export interface ConnectedDevice {
   hid: ValveHidDevice;
@@ -36,6 +38,7 @@ const WIRELESS_DEBOUNCE_MS = 500;
 export function App() {
   const [devices, setDevices] = useState<Map<string, ConnectedDevice>>(new Map());
   const [bootloaderDevices, setBootloaderDevices] = useState<BootloaderDevice[]>([]);
+  const [firmwareCatalog, setFirmwareCatalog] = useState<FirmwareCatalog | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -127,6 +130,16 @@ export function App() {
   useEffect(() => {
     refreshDevices();
   }, [refreshDevices]);
+
+  // Fetch firmware metadata catalog once on mount
+  useEffect(() => {
+    fetchFirmwareCatalog()
+      .then(setFirmwareCatalog)
+      .catch((e: unknown) => {
+        const msg = e instanceof Error ? e.message : String(e);
+        setError(`Failed to load firmware catalog: ${msg}`);
+      });
+  }, []);
 
   // Listen for USB device connect/disconnect with debounce (HID + Serial)
   useEffect(() => {
@@ -251,6 +264,7 @@ export function App() {
         <DeviceList
           devices={Array.from(devices.values())}
           bootloaderDevices={bootloaderDevices}
+          firmwareCatalog={firmwareCatalog}
           onFlashComplete={refreshDevicesAndRewatch}
           onFlashingChange={(v) => { flashingRef.current = v; }}
         />

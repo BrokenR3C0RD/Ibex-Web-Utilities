@@ -10,6 +10,8 @@ import {
 } from "@lib/index.js";
 import { TRITON_FW_MAGIC, PROTEUS_FW_MAGIC } from "@lib/constants.js";
 import type { BootloaderDevice, FirmwareFile, UpdateEvent } from "@lib/index.js";
+import type { FirmwareCatalog } from "../firmware-catalog";
+import { lookupFirmwareByCrc } from "../firmware-catalog";
 import { Modal } from "./Modal";
 import {
   WarningIcon,
@@ -30,13 +32,14 @@ function fwMagicName(magic: number): string {
 
 interface FlashWizardProps {
   device: BootloaderDevice;
+  firmwareCatalog: FirmwareCatalog | null;
   isOpen: boolean;
   onClose: () => void;
   onFlashComplete: () => void;
   onFlashingChange: (flashing: boolean) => void;
 }
 
-export function FlashWizard({ device, isOpen, onClose, onFlashComplete, onFlashingChange }: FlashWizardProps) {
+export function FlashWizard({ device, firmwareCatalog, isOpen, onClose, onFlashComplete, onFlashingChange }: FlashWizardProps) {
   const [step, setStep] = useState<WizardStep>("disclaimer");
   const [firmware, setFirmware] = useState<FirmwareFile | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
@@ -224,6 +227,25 @@ export function FlashWizard({ device, isOpen, onClose, onFlashComplete, onFlashi
                 <td>{hasInstalled ? fwMagicName(device.info.installedFwMagic) : <span className="text-gray-500 italic">None</span>}</td>
                 <td>{fwMagicName(firmware.metadata.magic)}</td>
               </tr>
+              {firmwareCatalog && (() => {
+                const currentEntry = hasInstalled
+                  ? lookupFirmwareByCrc(firmwareCatalog, device.info.installedFwChecksum)
+                  : null;
+                const newEntry = lookupFirmwareByCrc(firmwareCatalog, firmware.metadata.payloadChecksum);
+                const renderCell = (entry: ReturnType<typeof lookupFirmwareByCrc>, fallback: React.ReactNode) => {
+                  if (entry) return entry.version_hex;
+                  return fallback;
+                };
+                return (
+                  <tr>
+                    <td className="text-gray-400 !font-sans">Firmware</td>
+                    <td>{hasInstalled
+                      ? renderCell(currentEntry, <span className="text-gray-500">Unrecognized</span>)
+                      : <span className="text-gray-500 italic">—</span>}</td>
+                    <td>{renderCell(newEntry, <span className="text-gray-500">Unrecognized</span>)}</td>
+                  </tr>
+                );
+              })()}
               <tr>
                 <td className="text-gray-400 !font-sans">Size</td>
                 <td>{hasInstalled ? `${(device.info.installedFwSize / 1024).toFixed(1)} KiB` : <span className="text-gray-500 italic">—</span>}</td>

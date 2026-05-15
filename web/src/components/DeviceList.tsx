@@ -1,5 +1,6 @@
 import type { BootloaderDevice } from "@lib/index.js";
 import type { ConnectedDevice } from "../App";
+import type { FirmwareCatalog } from "../firmware-catalog";
 import { DeviceCard } from "./DeviceCard";
 import { BootloaderCard } from "./BootloaderCard";
 import { ControllerIcon } from "./Icons";
@@ -7,11 +8,12 @@ import { ControllerIcon } from "./Icons";
 interface DeviceListProps {
   devices: ConnectedDevice[];
   bootloaderDevices: BootloaderDevice[];
+  firmwareCatalog: FirmwareCatalog | null;
   onFlashComplete: () => void;
   onFlashingChange: (flashing: boolean) => void;
 }
 
-export function DeviceList({ devices, bootloaderDevices, onFlashComplete, onFlashingChange }: DeviceListProps) {
+export function DeviceList({ devices, bootloaderDevices, firmwareCatalog, onFlashComplete, onFlashingChange }: DeviceListProps) {
   if (devices.length === 0 && bootloaderDevices.length === 0) {
     return (
       <div className="max-w-lg mx-auto py-16" style={{ animation: "fade-in 0.3s ease-out" }}>
@@ -64,7 +66,7 @@ export function DeviceList({ devices, bootloaderDevices, onFlashComplete, onFlas
         <DeviceCard key={`hid-${i}`} device={dev} />
       ))}
       {bootloaderDevices.map((dev, i) => (
-        <BootloaderCard key={`bl-${i}`} device={dev} onFlashComplete={onFlashComplete} onFlashingChange={onFlashingChange} />
+        <BootloaderCard key={`bl-${i}`} device={dev} firmwareCatalog={firmwareCatalog} onFlashComplete={onFlashComplete} onFlashingChange={onFlashingChange} />
       ))}
     </div>
   );

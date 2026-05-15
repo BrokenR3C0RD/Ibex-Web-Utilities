@@ -2,6 +2,8 @@ import { useState } from "react";
 import { DeviceTypeNames } from "@lib/index.js";
 import { TRITON_FW_MAGIC, PROTEUS_FW_MAGIC } from "@lib/constants.js";
 import type { BootloaderDevice } from "@lib/index.js";
+import type { FirmwareCatalog } from "../firmware-catalog";
+import { lookupFirmwareByCrc } from "../firmware-catalog";
 import { TimestampValue } from "./TimestampValue";
 import { BootloaderIcon, HashIcon, FirmwareIcon, SerialIcon, FlashIcon } from "./Icons";
 import { FlashWizard } from "./FlashWizard";
@@ -15,13 +17,17 @@ function fwMagicName(magic: number): string {
 
 interface BootloaderCardProps {
   device: BootloaderDevice;
+  firmwareCatalog: FirmwareCatalog | null;
   onFlashComplete: () => void;
   onFlashingChange: (flashing: boolean) => void;
 }
 
-export function BootloaderCard({ device, onFlashComplete, onFlashingChange }: BootloaderCardProps) {
+export function BootloaderCard({ device, firmwareCatalog, onFlashComplete, onFlashingChange }: BootloaderCardProps) {
   const [wizardOpen, setWizardOpen] = useState(false);
   const { info, deviceType } = device;
+  const catalogEntry = firmwareCatalog
+    ? lookupFirmwareByCrc(firmwareCatalog, info.installedFwChecksum)
+    : null;
 
   return (
     <div className={styles.card}>
@@ -89,6 +95,16 @@ export function BootloaderCard({ device, onFlashComplete, onFlashingChange }: Bo
                 </dt>
                 <dd className="font-mono text-gray-200 text-xs">{fwMagicName(info.installedFwMagic)}</dd>
               </div>
+              {firmwareCatalog && (
+                <div className="flex justify-between">
+                  <dt className="text-gray-400">Firmware</dt>
+                  {catalogEntry ? (
+                    <TimestampValue ts={parseInt(catalogEntry.version_hex, 16)} />
+                  ) : (
+                    <dd className="font-mono text-gray-500">Unrecognized</dd>
+                  )}
+                </div>
+              )}
               <div className="flex justify-between">
                 <dt className="text-gray-400">Size</dt>
                 <dd className="font-mono text-gray-200">{(info.installedFwSize / 1024).toFixed(1)} KiB</dd>
@@ -116,6 +132,7 @@ export function BootloaderCard({ device, onFlashComplete, onFlashingChange }: Bo
 
       <FlashWizard
         device={device}
+        firmwareCatalog={firmwareCatalog}
         isOpen={wizardOpen}
         onClose={() => setWizardOpen(false)}
         onFlashComplete={onFlashComplete}
