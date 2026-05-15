@@ -1,5 +1,6 @@
 import { Modal } from "./Modal";
 import { InfoIcon, SpinnerIcon } from "./Icons";
+import styles from "./FlashWizard.module.sass";
 
 interface PickerInstructionsModalProps {
   isOpen: boolean;
@@ -32,19 +33,11 @@ export function PickerInstructionsModal({
         </div>
       </div>
 
-      <div className="flex justify-end gap-2 mt-5 pt-4 border-t border-border-subtle">
-        <button
-          onClick={onCancel}
-          disabled={busy}
-          className="px-3 py-1.5 text-sm rounded text-gray-300 hover:bg-surface-raised cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-        >
+      <div className={styles.buttonRow}>
+        <button onClick={onCancel} disabled={busy} className={styles.cancelButton}>
           Cancel
         </button>
-        <button
-          onClick={onContinue}
-          disabled={busy}
-          className="px-4 py-1.5 text-sm font-medium rounded bg-valve-blue text-white hover:bg-valve-blue/90 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center gap-2 transition-colors"
-        >
+        <button onClick={onContinue} disabled={busy} className={styles.primaryButton}>
           {busy ? (
             <>
               <SpinnerIcon className="w-3.5 h-3.5" />
