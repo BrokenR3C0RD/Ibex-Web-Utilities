@@ -37,7 +37,7 @@ export interface ConnectedDevice {
 /** Debounce delay for USB hotplug events (ms).
  *  The Puck has 5 HID interfaces that enumerate/de-enumerate
  *  one at a time — we wait for them all to settle. */
-const HOTPLUG_DEBOUNCE_MS = 2000;
+const HOTPLUG_DEBOUNCE_MS = 500;
 
 /** Short debounce for wireless connect/disconnect (ms).
  *  Only need a brief delay since no USB re-enumeration happens. */
@@ -293,26 +293,31 @@ export function App() {
       });
   }, []);
 
-  // Listen for USB device connect/disconnect with debounce (HID + Serial)
+  // Listen for USB device connect/disconnect.
+  // HID is debounced because the Puck's 5 HID interfaces enumerate one at
+  // a time and we want a single coalesced refresh. Serial enumerates as a
+  // single port, so we refresh immediately — important for catching the
+  // Puck's brief bootloader window before its 3s timeout fires.
   useEffect(() => {
-    const onHotplug = () => { scheduleCallback(refreshDevicesAndRewatch, HOTPLUG_DEBOUNCE_MS); };
+    const onHidHotplug = () => { scheduleCallback(refreshDevicesAndRewatch, HOTPLUG_DEBOUNCE_MS); };
+    const onSerialHotplug = () => { refreshDevicesAndRewatch(); };
     const cleanups: (() => void)[] = [];
 
     if (navigator.hid) {
-      navigator.hid.addEventListener("connect", onHotplug);
-      navigator.hid.addEventListener("disconnect", onHotplug);
+      navigator.hid.addEventListener("connect", onHidHotplug);
+      navigator.hid.addEventListener("disconnect", onHidHotplug);
       cleanups.push(() => {
-        navigator.hid.removeEventListener("connect", onHotplug);
-        navigator.hid.removeEventListener("disconnect", onHotplug);
+        navigator.hid.removeEventListener("connect", onHidHotplug);
+        navigator.hid.removeEventListener("disconnect", onHidHotplug);
       });
     }
 
     if (navigator.serial) {
-      navigator.serial.addEventListener("connect", onHotplug);
-      navigator.serial.addEventListener("disconnect", onHotplug);
+      navigator.serial.addEventListener("connect", onSerialHotplug);
+      navigator.serial.addEventListener("disconnect", onSerialHotplug);
       cleanups.push(() => {
-        navigator.serial.removeEventListener("connect", onHotplug);
-        navigator.serial.removeEventListener("disconnect", onHotplug);
+        navigator.serial.removeEventListener("connect", onSerialHotplug);
+        navigator.serial.removeEventListener("disconnect", onSerialHotplug);
       });
     }
 
