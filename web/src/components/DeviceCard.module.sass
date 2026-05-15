@@ -80,13 +80,14 @@
   &:hover
     color: #e5e7eb
 
-  .chevron
-    width: 0.875rem
-    height: 0.875rem
-    transition: transform 0.2s ease
+.chevron
+  width: 0.875rem
+  height: 0.875rem
+  flex-shrink: 0
+  transition: transform 0.2s ease
 
-    &.open
-      transform: rotate(90deg)
+  &.open
+    transform: rotate(90deg)
 
 .expandContent
   overflow: hidden

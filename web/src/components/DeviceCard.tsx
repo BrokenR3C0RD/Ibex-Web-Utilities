@@ -36,6 +36,7 @@ function connectionChip(type: DeviceType): { label: string; variant: "usb" | "bl
 
 function ControllerChild({ controller }: { controller: ConnectedController }) {
   const { runBootloaderPicker } = usePicker();
+  const [expanded, setExpanded] = useState(false);
   const [rebooting, setRebooting] = useState(false);
   const [rebootError, setRebootError] = useState<string | null>(null);
 
@@ -56,7 +57,12 @@ function ControllerChild({ controller }: { controller: ConnectedController }) {
 
   return (
     <div className={styles.wirelessChild}>
-      <div className="flex items-center gap-2 mb-2">
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        className="w-full flex items-center gap-2 text-left cursor-pointer hover:text-accent-wireless/80 transition-colors"
+        aria-expanded={expanded}
+      >
         <span className={styles.wirelessDot}>
           <span className={styles.ping} />
           <span className={styles.dot} />
@@ -66,61 +72,65 @@ function ControllerChild({ controller }: { controller: ConnectedController }) {
           Steam Controller — Slot {controller.slot}
         </h3>
         <span className={`${styles.badge} ${styles.esb} ${styles.small}`}>ESB</span>
-      </div>
-      <dl className={`${styles.infoList} text-xs`}>
-        <div className="flex justify-between">
-          <dt className="text-gray-400">Serial</dt>
-          <dd className="font-mono">{controller.serialNumber}</dd>
-        </div>
-        <div className="flex justify-between">
-          <dt className="text-gray-400">Hardware ID</dt>
-          <dd className="font-mono">0x{controller.hardwareId.toString(16).toUpperCase()}</dd>
-        </div>
-        <div className="flex justify-between">
-          <dt className="text-gray-400">Firmware Version</dt>
-          <TimestampValue ts={controller.buildTimestamp} />
-        </div>
-        {controller.bootBuildTimestamp !== 0 && (
-          <div className="flex justify-between">
-            <dt className="text-gray-400">Bootloader Version</dt>
-            <TimestampValue ts={controller.bootBuildTimestamp} />
-          </div>
-        )}
-        {controller.productId !== 0 && (
-          <div className="flex justify-between">
-            <dt className="text-gray-400">Product ID</dt>
-            <dd className="font-mono">0x{controller.productId.toString(16).toUpperCase()}</dd>
-          </div>
-        )}
-        {controller.capabilities !== 0 && (
-          <div className="flex justify-between">
-            <dt className="text-gray-400">Capabilities</dt>
-            <dd className="font-mono">0x{controller.capabilities.toString(16).toUpperCase()}</dd>
-          </div>
-        )}
-      </dl>
+        <ChevronRightIcon className={`${styles.chevron} ${expanded ? styles.open : ""}`} />
+      </button>
 
-      <div className="mt-2">
-        {rebootError && (
-          <p className="text-xs text-red-400 mb-1.5">{rebootError}</p>
-        )}
-        <button
-          onClick={handleReboot}
-          disabled={rebooting}
-          className={`${styles.rebootButton} ${styles.small}`}
-        >
-          {rebooting ? (
-            <>
-              <SpinnerIcon className="h-3 w-3" />
-              Rebooting...
-            </>
-          ) : (
-            <>
-              <RebootIcon className="w-3 h-3" />
-              Reboot to Bootloader
-            </>
+      <div className={`${styles.expandContent} ${expanded ? styles.open : styles.closed}`}>
+        <dl className={`${styles.infoList} text-xs mt-2`}>
+          <div className="flex justify-between">
+            <dt className="text-gray-400">Serial</dt>
+            <dd className="font-mono">{controller.serialNumber}</dd>
+          </div>
+          <div className="flex justify-between">
+            <dt className="text-gray-400">Hardware ID</dt>
+            <dd className="font-mono">0x{controller.hardwareId.toString(16).toUpperCase()}</dd>
+          </div>
+          <div className="flex justify-between">
+            <dt className="text-gray-400">Firmware Version</dt>
+            <TimestampValue ts={controller.buildTimestamp} />
+          </div>
+          {controller.bootBuildTimestamp !== 0 && (
+            <div className="flex justify-between">
+              <dt className="text-gray-400">Bootloader Version</dt>
+              <TimestampValue ts={controller.bootBuildTimestamp} />
+            </div>
           )}
-        </button>
+          {controller.productId !== 0 && (
+            <div className="flex justify-between">
+              <dt className="text-gray-400">Product ID</dt>
+              <dd className="font-mono">0x{controller.productId.toString(16).toUpperCase()}</dd>
+            </div>
+          )}
+          {controller.capabilities !== 0 && (
+            <div className="flex justify-between">
+              <dt className="text-gray-400">Capabilities</dt>
+              <dd className="font-mono">0x{controller.capabilities.toString(16).toUpperCase()}</dd>
+            </div>
+          )}
+        </dl>
+
+        <div className="mt-2">
+          {rebootError && (
+            <p className="text-xs text-red-400 mb-1.5">{rebootError}</p>
+          )}
+          <button
+            onClick={handleReboot}
+            disabled={rebooting}
+            className={`${styles.rebootButton} ${styles.small}`}
+          >
+            {rebooting ? (
+              <>
+                <SpinnerIcon className="h-3 w-3" />
+                Rebooting...
+              </>
+            ) : (
+              <>
+                <RebootIcon className="w-3 h-3" />
+                Reboot to Bootloader
+              </>
+            )}
+          </button>
+        </div>
       </div>
     </div>
   );
