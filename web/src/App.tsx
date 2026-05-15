@@ -17,6 +17,7 @@ import { ConnectButton } from "./components/ConnectButton";
 import { DeviceList } from "./components/DeviceList";
 import { ErrorBanner } from "./components/ErrorBanner";
 import { DebugPanel } from "./components/DebugPanel";
+import { GitHubIcon } from "./components/Icons";
 import { fetchFirmwareCatalog } from "./firmware-catalog";
 import type { FirmwareCatalog } from "./firmware-catalog";
 
@@ -238,7 +239,7 @@ export function App() {
   }, [refreshDevicesAndRewatch]);
 
   return (
-    <div className="min-h-screen bg-surface text-gray-100">
+    <div className="min-h-screen flex flex-col bg-surface text-gray-100">
       <header className="relative bg-valve-darker px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -266,7 +267,7 @@ export function App() {
 
       {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
 
-      <main className="p-6">
+      <main className="flex-1 p-6">
         <DeviceList
           devices={Array.from(devices.values())}
           bootloaderDevices={bootloaderDevices}
@@ -277,6 +278,19 @@ export function App() {
       </main>
 
       <DebugPanel />
+
+      <footer className="px-6 py-4 border-t border-border-subtle text-xs text-gray-500 flex items-center justify-between">
+        <span>Part of the OpenSteamController project</span>
+        <a
+          href="https://github.com/OpenSteamController/Ibex-Web-Utilities"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-gray-400 hover:text-valve-blue transition-colors"
+          aria-label="GitHub repository"
+        >
+          <GitHubIcon className="w-5 h-5" />
+        </a>
+      </footer>
     </div>
   );
 }
